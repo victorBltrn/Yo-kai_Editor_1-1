@@ -29,15 +29,15 @@ jobs:
           mingw32-make -j%NUMBER_OF_PROCESSORS%
 
       - name: Prepare Release Package
-        shell: cmd
+        shell: pwsh
         run: |
-          mkdir dist
-          copy "release\Yo-kai Editor 1.exe" dist\
-          copy README.txt dist\
-          copy LICENSE.txt dist\
-          copy AUTHORS.txt dist\
-          copy CHANGELOG.txt dist\
-          windeployqt --release --compiler-runtime "dist\Yo-kai Editor 1.exe"
+          New-Item -ItemType Directory -Force -Path "dist/platforms"
+          Copy-Item "release/Yo-kai Editor 1.exe" "dist/"
+          Copy-Item "README.txt", "LICENSE.txt", "AUTHORS.txt", "CHANGELOG.txt" "dist/"
+          Copy-Item "$env:QT_ROOT_DIR/plugins/platforms/qwindows.dll" "dist/platforms/"
+          if (Test-Path "$env:QT_ROOT_DIR/plugins/styles") { Copy-Item "$env:QT_ROOT_DIR/plugins/styles" "dist/" -Recurse }
+          if (Test-Path "$env:QT_ROOT_DIR/plugins/imageformats") { Copy-Item "$env:QT_ROOT_DIR/plugins/imageformats" "dist/" -Recurse }
+          windeployqt --release --compiler-runtime --no-plugins "dist/Yo-kai Editor 1.exe"
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
