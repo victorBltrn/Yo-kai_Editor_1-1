@@ -20,7 +20,6 @@ jobs:
         with:
           version: '5.15.2'
           arch: 'win64_mingw81'
-          tools: 'tools_mingw,8.1.0-1-202004170606,qt.tools.win64_mingw810'
 
       - name: Build Project
         shell: cmd
