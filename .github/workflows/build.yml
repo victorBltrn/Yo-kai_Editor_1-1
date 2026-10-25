@@ -31,7 +31,7 @@ jobs:
       - name: Prepare Release Package
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path "dist"
+          New-Item -ItemType Directory -Force -Path "dist/platforms"
           Copy-Item "release/Yo-kai Editor 1.exe" "dist/"
           Copy-Item "README.txt", "LICENSE.txt", "AUTHORS.txt", "CHANGELOG.txt" "dist/"
 
@@ -39,18 +39,46 @@ jobs:
           $qtPlugins = (qmake -query QT_INSTALL_PLUGINS).Trim()
           $gccPath = Split-Path (Get-Command g++).Source
 
-          Write-Host "Gathering Qt core libraries from $qtBin"
-          Get-ChildItem -Path $qtBin -Include "Qt5Core.dll", "Qt5Gui.dll", "Qt5Widgets.dll" -File | Copy-Item -Destination "dist/" -Force
+          Write-Host "Qt Bin: $qtBin"
+          Write-Host "Qt Plugins: $qtPlugins"
+          Write-Host "GCC Path: $gccPath"
 
-          Write-Host "Gathering plugins from $qtPlugins"
-          Copy-Item "$qtPlugins/platforms" "dist/" -Recurse -Force
-          if (Test-Path "$qtPlugins/styles") { Copy-Item "$qtPlugins/styles" "dist/" -Recurse -Force }
+          # Copy Qt Core DLLs
+          $qtDlls = @("Qt5Core.dll", "Qt5Gui.dll", "Qt5Widgets.dll", "Qt5Svg.dll")
+          foreach ($dll in $qtDlls) {
+              if (Test-Path "$qtBin/$dll") {
+                  Copy-Item "$qtBin/$dll" "dist/" -Force
+                  Write-Host "Copied $dll"
+              }
+          }
 
-          Write-Host "Gathering MinGW compiler runtime libraries"
-          Get-ChildItem -Path $gccPath, $qtBin -Include "libgcc_s_seh-1.dll", "libstdc++-6.dll", "libwinpthread-1.dll" -File | Copy-Item -Destination "dist/" -Force
+          # Copy Platform & Style plugins
+          Copy-Item "$qtPlugins/platforms/*" "dist/platforms/" -Recurse -Force
+          if (Test-Path "$qtPlugins/styles") {
+              New-Item -ItemType Directory -Force -Path "dist/styles"
+              Copy-Item "$qtPlugins/styles/*" "dist/styles/" -Recurse -Force
+          }
 
-          Write-Host "Files packaged successfully:"
-          Get-ChildItem "dist" -Recurse | Select-Object FullName
+          # Copy MinGW compiler runtime DLLs
+          $minGwDlls = @("libgcc_s_seh-1.dll", "libstdc++-6.dll", "libwinpthread-1.dll")
+          foreach ($dll in $minGwDlls) {
+              if (Test-Path "$gccPath/$dll") {
+                  Copy-Item "$gccPath/$dll" "dist/" -Force
+                  Write-Host "Copied $dll from GCC folder"
+              } elseif (Test-Path "$qtBin/$dll") {
+                  Copy-Item "$qtBin/$dll" "dist/" -Force
+                  Write-Host "Copied $dll from Qt bin folder"
+              } else {
+                  $found = Get-ChildItem -Path "C:\", "D:\" -Filter $dll -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+                  if ($found) {
+                      Copy-Item $found.FullName "dist/" -Force
+                      Write-Host "Copied $dll from $($found.FullName)"
+                  }
+              }
+          }
+
+          Write-Host "=== All Files Packaged in dist ==="
+          Get-ChildItem "dist" -Recurse | Select-Object Name, Length
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
