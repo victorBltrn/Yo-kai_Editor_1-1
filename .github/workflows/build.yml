@@ -24,6 +24,7 @@ jobs:
       - name: Build Project
         shell: cmd
         run: |
+          lrelease Yo-kai_Editor_1.pro
           qmake Yo-kai_Editor_1.pro CONFIG+=release
           mingw32-make -j%NUMBER_OF_PROCESSORS%
 
