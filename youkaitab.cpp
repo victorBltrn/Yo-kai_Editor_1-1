@@ -37,6 +37,12 @@ YoukaiTab::YoukaiTab(SaveManager *mgr, QWidget *parent, int sectionId) :
         ui->attitudeCB->addItem((*it).second, (*it).first);
     }
     ui->attitudeCB->setCurrentIndex(-1);
+
+    ui->loafingCB->addItem(tr("Loafer"), 0);
+    ui->loafingCB->addItem(tr("Carefree"), 3);
+    ui->loafingCB->addItem(tr("Stiff"), 4);
+    ui->loafingCB->addItem(tr("Serious"), 7);
+    ui->loafingCB->setCurrentIndex(-1);
     connect(ui->searchEdit, SIGNAL(textChanged(QString)), SLOT(filterYoKaiList(QString)));
     connect(ui->listWidget, SIGNAL(currentRowChanged(int)), SLOT(loadItemAt(int)));
     connect(ui->resetButton, SIGNAL(clicked(bool)), SLOT(loadCurrentItem()));
@@ -50,6 +56,32 @@ YoukaiTab::~YoukaiTab()
     delete ui;
 }
 
+QString YoukaiTab::getEquipNameAt(int row)
+{
+    quint16 eq_num1 = this->read<quint16>(0x28 + 0x5C * row);
+    quint16 eq_num2 = this->read<quint16>(0x2A + 0x5C * row);
+    if (eq_num1 == 0 && eq_num2 == 0) {
+        return QString();
+    }
+    for (int i = 0; i < GameConfig::EquipmentCountMax; ++i) {
+        quint16 n1 = this->getMgr()->readSection<quint16>(0x00 + 0x10 * i, 0x05);
+        quint16 n2 = this->getMgr()->readSection<quint16>(0x02 + 0x10 * i, 0x05);
+        if (n1 == eq_num1 && n2 == eq_num2) {
+            quint32 eqId = this->getMgr()->readSection<quint32>(0x04 + 0x10 * i, 0x05);
+            const QList<QPair<quint32, QString> > &equipData = GameData::getInstance().getData("equipment");
+            for (QList<QPair<quint32, QString> >::const_iterator it = equipData.constBegin();
+                 it != equipData.constEnd();
+                 ++it) {
+                if ((*it).first == eqId) {
+                    return (*it).second;
+                }
+            }
+            break;
+        }
+    }
+    return tr("(unknown)");
+}
+
 void YoukaiTab::update()
 {
     for (int i = 0; i < this->itemsCount; ++i) {
@@ -59,13 +91,15 @@ void YoukaiTab::update()
             QString name = ui->youkaiCB->itemText(itemIndex);
             quint8 level = this->read<quint8>(0x54 + 0x5C * i);
             QString nickname = this->readString(0x08 + 0x5C * i, 0x18 - 1);
+            QString equip = this->getEquipNameAt(i);
+            QString equipSuffix = equip.isEmpty() ? QString() : QString(" [%1]").arg(equip);
             if (!nickname.isEmpty() && nickname != name) {
                 ui->listWidget->item(i)->setText(
-                            QString("%1 \"%2\" (Lv. %3)").arg(name).arg(nickname).arg(level)
+                            QString("%1 \"%2\" (Lv. %3)%4").arg(name).arg(nickname).arg(level).arg(equipSuffix)
                             );
             } else {
                 ui->listWidget->item(i)->setText(
-                            QString("%1 (Lv. %2)").arg(name).arg(level)
+                            QString("%1 (Lv. %2)%4").arg(name).arg(level).arg(equipSuffix)
                             );
             }
         } else {
@@ -141,6 +175,14 @@ void YoukaiTab::loadItemAt(int row)
         ui->levelSB->setValue(level);
         ui->attitudeCB->setCurrentIndex(ui->attitudeCB->findData((quint32)attitude));
 
+        quint8 loafing = this->read<quint8>(0x57 + 0x5C * row);
+        int loafingIndex = ui->loafingCB->findData((quint32)loafing);
+        if (loafingIndex < 0) {
+            ui->loafingCB->addItem(QString::number(loafing), (quint32)loafing);
+            loafingIndex = ui->loafingCB->findData((quint32)loafing);
+        }
+        ui->loafingCB->setCurrentIndex(loafingIndex);
+
         /* load Yo-kai */
         int youkaiIndex = ui->youkaiCB->findData(youkaiId);
         ui->youkaiCB->setCurrentIndex(youkaiIndex);
@@ -149,29 +191,10 @@ void YoukaiTab::loadItemAt(int row)
         }
 
         /* load equipment (read-only) */
-        quint16 eq_num1 = this->read<quint16>(0x28 + 0x5C * row);
-        quint16 eq_num2 = this->read<quint16>(0x2A + 0x5C * row);
-        if (eq_num1 == 0 && eq_num2 == 0) {
+        QString equipName = this->getEquipNameAt(row);
+        if (equipName.isEmpty()) {
             ui->equipEdit->setText(tr("(None)"));
         } else {
-            QString equipName = tr("(unknown)");
-            for (int i = 0; i < GameConfig::EquipmentCountMax; ++i) {
-                quint16 n1 = this->getMgr()->readSection<quint16>(0x00 + 0x10 * i, 0x05);
-                quint16 n2 = this->getMgr()->readSection<quint16>(0x02 + 0x10 * i, 0x05);
-                if (n1 == eq_num1 && n2 == eq_num2) {
-                    quint32 eqId = this->getMgr()->readSection<quint32>(0x04 + 0x10 * i, 0x05);
-                    const QList<QPair<quint32, QString> > &equipData = GameData::getInstance().getData("equipment");
-                    for (QList<QPair<quint32, QString> >::const_iterator it = equipData.constBegin();
-                         it != equipData.constEnd();
-                         ++it) {
-                        if ((*it).first == eqId) {
-                            equipName = (*it).second;
-                            break;
-                        }
-                    }
-                    break;
-                }
-            }
             ui->equipEdit->setText(equipName);
         }
     }
@@ -226,6 +249,12 @@ void YoukaiTab::writeItemAt(int row)
                         0x55 + 0x5C * row
                         ); // attitude
         }
+        if (ui->loafingCB->currentIndex() >= 0) {
+            this->write<quint8>(
+                        (quint8)ui->loafingCB->currentData().toUInt(),
+                        0x57 + 0x5C * row
+                        ); // loafing attitude
+        }
         this->write<quint16>(ui->evSB->value(), 0x5A + 0x5C * row); // rawEV
     }
 
@@ -237,13 +266,15 @@ void YoukaiTab::writeItemAt(int row)
         QString name = ui->youkaiCB->itemText(itemIndex);
         quint8 level = this->read<quint8>(0x54 + 0x5C * row);
         QString nickname = this->readString(0x08 + 0x5C * row, 0x18 - 1);
+        QString equip = this->getEquipNameAt(row);
+        QString equipSuffix = equip.isEmpty() ? QString() : QString(" [%1]").arg(equip);
         if (!nickname.isEmpty() && nickname != name) {
             ui->listWidget->item(row)->setText(
-                        QString("%1 \"%2\" (Lv. %3)").arg(name).arg(nickname).arg(level)
+                        QString("%1 \"%2\" (Lv. %3)%4").arg(name).arg(nickname).arg(level).arg(equipSuffix)
                         );
         } else {
             ui->listWidget->item(row)->setText(
-                        QString("%1 (Lv. %2)").arg(name).arg(level)
+                        QString("%1 (Lv. %2)%4").arg(name).arg(level).arg(equipSuffix)
                         );
         }
     } else {

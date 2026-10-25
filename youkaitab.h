@@ -34,6 +34,7 @@ public slots:
 private:
     Ui::YoukaiTab *ui;
     QList<QCheckBox *> flagCBs;
+    QString getEquipNameAt(int row);
 };
 
 #endif // YOUKAITAB_H

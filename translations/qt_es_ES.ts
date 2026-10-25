@@ -555,6 +555,26 @@
         <translation>(Ninguno)</translation>
     </message>
     <message>
+        <source>Loafing</source>
+        <translation>Ganduleo</translation>
+    </message>
+    <message>
+        <source>Loafer</source>
+        <translation>Gandul</translation>
+    </message>
+    <message>
+        <source>Carefree</source>
+        <translation>Despreocupado</translation>
+    </message>
+    <message>
+        <source>Stiff</source>
+        <translation>Firme</translation>
+    </message>
+    <message>
+        <source>Serious</source>
+        <translation>Serio</translation>
+    </message>
+    <message>
         <location filename="../youkaitab.cpp" line="48"/>
         <location filename="../youkaitab.cpp" line="166"/>
         <source>(unknown)</source>
