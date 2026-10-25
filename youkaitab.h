@@ -1,4 +1,4 @@
-﻿#pragma execution_character_set("utf-8")
+#pragma execution_character_set("utf-8")
 
 #ifndef YOUKAITAB_H
 #define YOUKAITAB_H
@@ -29,6 +29,7 @@ public slots:
     void writeCurrentItem();
     void updateYoukaiCount();
     void automaticNumbering();
+    void filterYoKaiList(const QString &text);
 
 private:
     Ui::YoukaiTab *ui;

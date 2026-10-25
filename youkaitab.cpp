@@ -5,6 +5,7 @@
 #include <QMessageBox>
 #include <QtGlobal>
 #include <QTime>
+#include <QCompleter>
 
 YoukaiTab::YoukaiTab(SaveManager *mgr, QWidget *parent, int sectionId) :
     ListTab(mgr, parent, sectionId),
@@ -23,6 +24,12 @@ YoukaiTab::YoukaiTab(SaveManager *mgr, QWidget *parent, int sectionId) :
         ui->youkaiCB->addItem((*it).second, (*it).first);
     }
     ui->youkaiCB->setCurrentIndex(-1);
+    ui->youkaiCB->setEditable(true);
+    ui->youkaiCB->setInsertPolicy(QComboBox::NoInsert);
+    if (ui->youkaiCB->completer()) {
+        ui->youkaiCB->completer()->setFilterMode(Qt::MatchContains);
+        ui->youkaiCB->completer()->setCaseSensitivity(Qt::CaseInsensitive);
+    }
 
     for (QList<QPair<quint32, QString> >::const_iterator it = GameData::getInstance().getData("attitude").constBegin();
          it != GameData::getInstance().getData("attitude").constEnd();
@@ -30,6 +37,7 @@ YoukaiTab::YoukaiTab(SaveManager *mgr, QWidget *parent, int sectionId) :
         ui->attitudeCB->addItem((*it).second, (*it).first);
     }
     ui->attitudeCB->setCurrentIndex(-1);
+    connect(ui->searchEdit, SIGNAL(textChanged(QString)), SLOT(filterYoKaiList(QString)));
     connect(ui->listWidget, SIGNAL(currentRowChanged(int)), SLOT(loadItemAt(int)));
     connect(ui->resetButton, SIGNAL(clicked(bool)), SLOT(loadCurrentItem()));
     connect(ui->applyButton, SIGNAL(clicked(bool)), SLOT(writeCurrentItem()));
@@ -55,12 +63,18 @@ void YoukaiTab::update()
             ui->listWidget->item(i)->setText(tr("(unknown)"));
         }
     }
+    this->filterYoKaiList(ui->searchEdit->text());
     ui->applyButton->setEnabled(true);
     ui->resetButton->setEnabled(true);
     ui->youkaiNumApplyB->setEnabled(true);
     ui->autoNumberingButton->setEnabled(true);
     if (ui->listWidget->currentRow() < 0) {
-        ui->listWidget->setCurrentRow(0);
+        for (int i = 0; i < ui->listWidget->count(); ++i) {
+            if (!ui->listWidget->item(i)->isHidden()) {
+                ui->listWidget->setCurrentRow(i);
+                break;
+            }
+        }
     }
     this->loadCurrentItem();
 }
@@ -119,7 +133,11 @@ void YoukaiTab::loadItemAt(int row)
         ui->attitudeCB->setCurrentIndex(ui->attitudeCB->findData((quint32)attitude));
 
         /* load Yo-kai */
-        ui->youkaiCB->setCurrentIndex(ui->youkaiCB->findData(youkaiId));
+        int youkaiIndex = ui->youkaiCB->findData(youkaiId);
+        ui->youkaiCB->setCurrentIndex(youkaiIndex);
+        if (youkaiIndex < 0) {
+            ui->youkaiCB->clearEditText();
+        }
     }
 }
 
@@ -137,7 +155,13 @@ void YoukaiTab::writeItemAt(int row)
     if (row >= 0 && row < this->itemsCount) {
         this->write<quint16>(ui->num1SB->value(), 0x00 + 0x5C * row); // num1
         this->write<quint16>(ui->num2SB->value(), 0x02 + 0x5C * row); // num2
-        if (ui->youkaiCB->currentIndex() >= 0) {
+        int youkaiIndex = ui->youkaiCB->findText(ui->youkaiCB->currentText(), Qt::MatchExactly);
+        if (youkaiIndex >= 0) {
+            this->write<quint32>(
+                        ui->youkaiCB->itemData(youkaiIndex).value<quint32>(),
+                        0x04 + 0x5C * row
+                        ); // youkaiId
+        } else if (ui->youkaiCB->currentIndex() >= 0) {
             this->write<quint32>(
                         ui->youkaiCB->currentData().value<quint32>(),
                         0x04 + 0x5C * row
@@ -180,6 +204,7 @@ void YoukaiTab::writeItemAt(int row)
     } else {
         ui->listWidget->item(row)->setText(tr("(unknown)"));
     }
+    this->filterYoKaiList(ui->searchEdit->text());
 }
 
 void YoukaiTab::loadCurrentItem()
@@ -234,5 +259,37 @@ void YoukaiTab::automaticNumbering()
             }
         }
         this->update();
+    }
+}
+
+void YoukaiTab::filterYoKaiList(const QString &text)
+{
+    QString trimmed = text.trimmed();
+    int firstVisibleRow = -1;
+
+    for (int i = 0; i < ui->listWidget->count(); ++i) {
+        QListWidgetItem *item = ui->listWidget->item(i);
+        if (trimmed.isEmpty()) {
+            item->setHidden(false);
+            if (firstVisibleRow < 0) {
+                firstVisibleRow = i;
+            }
+        } else {
+            bool match = item->text().contains(trimmed, Qt::CaseInsensitive);
+            QString nickname = this->readString(0x08 + 0x5C * i, 0x18 - 1);
+            if (!match && !nickname.isEmpty()) {
+                match = nickname.contains(trimmed, Qt::CaseInsensitive);
+            }
+            item->setHidden(!match);
+            if (match && firstVisibleRow < 0) {
+                firstVisibleRow = i;
+            }
+        }
+    }
+
+    if (ui->listWidget->currentItem() && ui->listWidget->currentItem()->isHidden()) {
+        if (firstVisibleRow >= 0) {
+            ui->listWidget->setCurrentRow(firstVisibleRow);
+        }
     }
 }

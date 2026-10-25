@@ -543,6 +543,10 @@
         <translation>Aplicar</translation>
     </message>
     <message>
+        <source>Search...</source>
+        <translation>Buscar...</translation>
+    </message>
+    <message>
         <location filename="../youkaitab.cpp" line="48"/>
         <location filename="../youkaitab.cpp" line="166"/>
         <source>(unknown)</source>
