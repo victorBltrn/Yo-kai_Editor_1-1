@@ -116,7 +116,7 @@ void YoukaiTab::loadItemAt(int row)
         ui->EV_SpdSB->setValue(EV_Spd);
         ui->evSB->setValue(rawEV);
         ui->levelSB->setValue(level);
-        ui->attitudeCB->setCurrentIndex(ui->attitudeCB->findData(attitude));
+        ui->attitudeCB->setCurrentIndex(ui->attitudeCB->findData((quint32)attitude));
 
         /* load Yo-kai */
         ui->youkaiCB->setCurrentIndex(ui->youkaiCB->findData(youkaiId));
@@ -162,7 +162,7 @@ void YoukaiTab::writeItemAt(int row)
         this->write<quint8>(ui->levelSB->value(), 0x54 + 0x5C * row); // level
         if (ui->attitudeCB->currentIndex() >= 0) {
             this->write<quint8>(
-                        ui->attitudeCB->currentData().value<quint32>(),
+                        (quint8)ui->attitudeCB->currentData().toUInt(),
                         0x55 + 0x5C * row
                         ); // attitude
         }
