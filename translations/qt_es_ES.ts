@@ -547,6 +547,14 @@
         <translation>Buscar...</translation>
     </message>
     <message>
+        <source>Equip</source>
+        <translation>Equipamiento</translation>
+    </message>
+    <message>
+        <source>(None)</source>
+        <translation>(Ninguno)</translation>
+    </message>
+    <message>
         <location filename="../youkaitab.cpp" line="48"/>
         <location filename="../youkaitab.cpp" line="166"/>
         <source>(unknown)</source>

@@ -56,9 +56,18 @@ void YoukaiTab::update()
         quint32 youkaiId = this->read<quint32>(0x04 + 0x5C * i);
         int itemIndex = ui->youkaiCB->findData(youkaiId);
         if (itemIndex >= 0) {
-            ui->listWidget->item(i)->setText(
-                        ui->youkaiCB->itemText(itemIndex)
-                        );
+            QString name = ui->youkaiCB->itemText(itemIndex);
+            quint8 level = this->read<quint8>(0x54 + 0x5C * i);
+            QString nickname = this->readString(0x08 + 0x5C * i, 0x18 - 1);
+            if (!nickname.isEmpty() && nickname != name) {
+                ui->listWidget->item(i)->setText(
+                            QString("%1 \"%2\" (Lv. %3)").arg(name).arg(nickname).arg(level)
+                            );
+            } else {
+                ui->listWidget->item(i)->setText(
+                            QString("%1 (Lv. %2)").arg(name).arg(level)
+                            );
+            }
         } else {
             ui->listWidget->item(i)->setText(tr("(unknown)"));
         }
@@ -138,6 +147,33 @@ void YoukaiTab::loadItemAt(int row)
         if (youkaiIndex < 0) {
             ui->youkaiCB->clearEditText();
         }
+
+        /* load equipment (read-only) */
+        quint16 eq_num1 = this->read<quint16>(0x28 + 0x5C * row);
+        quint16 eq_num2 = this->read<quint16>(0x2A + 0x5C * row);
+        if (eq_num1 == 0 && eq_num2 == 0) {
+            ui->equipEdit->setText(tr("(None)"));
+        } else {
+            QString equipName = tr("(unknown)");
+            for (int i = 0; i < GameConfig::EquipmentCountMax; ++i) {
+                quint16 n1 = this->getMgr()->readSection<quint16>(0x00 + 0x10 * i, 0x05);
+                quint16 n2 = this->getMgr()->readSection<quint16>(0x02 + 0x10 * i, 0x05);
+                if (n1 == eq_num1 && n2 == eq_num2) {
+                    quint32 eqId = this->getMgr()->readSection<quint32>(0x04 + 0x10 * i, 0x05);
+                    const QList<QPair<quint32, QString> > &equipData = GameData::getInstance().getData("equipment");
+                    for (QList<QPair<quint32, QString> >::const_iterator it = equipData.constBegin();
+                         it != equipData.constEnd();
+                         ++it) {
+                        if ((*it).first == eqId) {
+                            equipName = (*it).second;
+                            break;
+                        }
+                    }
+                    break;
+                }
+            }
+            ui->equipEdit->setText(equipName);
+        }
     }
 }
 
@@ -198,9 +234,18 @@ void YoukaiTab::writeItemAt(int row)
     quint32 youkaiId = ui->youkaiCB->currentData().value<quint32>();
     int itemIndex = ui->youkaiCB->findData(youkaiId);
     if (itemIndex >= 0) {
-        ui->listWidget->item(row)->setText(
-                    ui->youkaiCB->itemText(itemIndex)
-                    );
+        QString name = ui->youkaiCB->itemText(itemIndex);
+        quint8 level = this->read<quint8>(0x54 + 0x5C * row);
+        QString nickname = this->readString(0x08 + 0x5C * row, 0x18 - 1);
+        if (!nickname.isEmpty() && nickname != name) {
+            ui->listWidget->item(row)->setText(
+                        QString("%1 \"%2\" (Lv. %3)").arg(name).arg(nickname).arg(level)
+                        );
+        } else {
+            ui->listWidget->item(row)->setText(
+                        QString("%1 (Lv. %2)").arg(name).arg(level)
+                        );
+        }
     } else {
         ui->listWidget->item(row)->setText(tr("(unknown)"));
     }
