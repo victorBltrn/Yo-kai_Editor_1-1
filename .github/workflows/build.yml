@@ -31,13 +31,26 @@ jobs:
       - name: Prepare Release Package
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path "dist/platforms"
+          New-Item -ItemType Directory -Force -Path "dist"
           Copy-Item "release/Yo-kai Editor 1.exe" "dist/"
           Copy-Item "README.txt", "LICENSE.txt", "AUTHORS.txt", "CHANGELOG.txt" "dist/"
-          Copy-Item "$env:QT_ROOT_DIR/plugins/platforms/qwindows.dll" "dist/platforms/"
-          if (Test-Path "$env:QT_ROOT_DIR/plugins/styles") { Copy-Item "$env:QT_ROOT_DIR/plugins/styles" "dist/" -Recurse }
-          if (Test-Path "$env:QT_ROOT_DIR/plugins/imageformats") { Copy-Item "$env:QT_ROOT_DIR/plugins/imageformats" "dist/" -Recurse }
-          windeployqt --release --compiler-runtime --no-plugins "dist/Yo-kai Editor 1.exe"
+
+          $qtBin = (qmake -query QT_INSTALL_BINS).Trim()
+          $qtPlugins = (qmake -query QT_INSTALL_PLUGINS).Trim()
+          $gccPath = Split-Path (Get-Command g++).Source
+
+          Write-Host "Gathering Qt core libraries from $qtBin"
+          Get-ChildItem -Path $qtBin -Include "Qt5Core.dll", "Qt5Gui.dll", "Qt5Widgets.dll" -File | Copy-Item -Destination "dist/" -Force
+
+          Write-Host "Gathering plugins from $qtPlugins"
+          Copy-Item "$qtPlugins/platforms" "dist/" -Recurse -Force
+          if (Test-Path "$qtPlugins/styles") { Copy-Item "$qtPlugins/styles" "dist/" -Recurse -Force }
+
+          Write-Host "Gathering MinGW compiler runtime libraries"
+          Get-ChildItem -Path $gccPath, $qtBin -Include "libgcc_s_seh-1.dll", "libstdc++-6.dll", "libwinpthread-1.dll" -File | Copy-Item -Destination "dist/" -Force
+
+          Write-Host "Files packaged successfully:"
+          Get-ChildItem "dist" -Recurse | Select-Object FullName
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
