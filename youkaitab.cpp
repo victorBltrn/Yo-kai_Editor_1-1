@@ -1,4 +1,4 @@
-﻿#pragma execution_character_set("utf-8")
+#pragma execution_character_set("utf-8")
 
 #include "youkaitab.h"
 #include "ui_youkaitab.h"
@@ -23,6 +23,13 @@ YoukaiTab::YoukaiTab(SaveManager *mgr, QWidget *parent, int sectionId) :
         ui->youkaiCB->addItem((*it).second, (*it).first);
     }
     ui->youkaiCB->setCurrentIndex(-1);
+
+    for (QList<QPair<quint32, QString> >::const_iterator it = GameData::getInstance().getData("attitude").constBegin();
+         it != GameData::getInstance().getData("attitude").constEnd();
+         ++it) {
+        ui->attitudeCB->addItem((*it).second, (*it).first);
+    }
+    ui->attitudeCB->setCurrentIndex(-1);
     connect(ui->listWidget, SIGNAL(currentRowChanged(int)), SLOT(loadItemAt(int)));
     connect(ui->resetButton, SIGNAL(clicked(bool)), SLOT(loadCurrentItem()));
     connect(ui->applyButton, SIGNAL(clicked(bool)), SLOT(writeCurrentItem()));
@@ -82,6 +89,7 @@ void YoukaiTab::loadItemAt(int row)
         quint8 EV_Def = this->read<quint8>(0x4D + 0x5C * row);
         quint8 EV_Spd = this->read<quint8>(0x4E + 0x5C * row);
         quint8 level = this->read<quint8>(0x54 + 0x5C * row);
+        quint8 attitude = this->read<quint8>(0x55 + 0x5C * row);
         quint16 rawEV = this->read<quint16>(0x5A + 0x5C * row);
         ui->num1SB->setValue(num1);
         ui->num2SB->setValue(num2);
@@ -108,6 +116,7 @@ void YoukaiTab::loadItemAt(int row)
         ui->EV_SpdSB->setValue(EV_Spd);
         ui->evSB->setValue(rawEV);
         ui->levelSB->setValue(level);
+        ui->attitudeCB->setCurrentIndex(ui->attitudeCB->findData(attitude));
 
         /* load Yo-kai */
         ui->youkaiCB->setCurrentIndex(ui->youkaiCB->findData(youkaiId));
@@ -151,6 +160,12 @@ void YoukaiTab::writeItemAt(int row)
         this->write<quint8>(ui->EV_DefSB->value(), 0x4D + 0x5C * row); // EV_Def
         this->write<quint8>(ui->EV_SpdSB->value(), 0x4E + 0x5C * row); // EV_Spd
         this->write<quint8>(ui->levelSB->value(), 0x54 + 0x5C * row); // level
+        if (ui->attitudeCB->currentIndex() >= 0) {
+            this->write<quint8>(
+                        ui->attitudeCB->currentData().value<quint32>(),
+                        0x55 + 0x5C * row
+                        ); // attitude
+        }
         this->write<quint16>(ui->evSB->value(), 0x5A + 0x5C * row); // rawEV
     }
 

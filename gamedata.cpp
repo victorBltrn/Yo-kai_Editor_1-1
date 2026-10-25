@@ -1,4 +1,4 @@
-﻿#pragma execution_character_set("utf-8")
+#pragma execution_character_set("utf-8")
 
 #include "gamedata.h"
 
@@ -6,7 +6,7 @@
 
 GameData::GameData()
 {
-    this->availableData << "consume" << "equipment" << "important" << "youkai" << "creature";
+    this->availableData << "consume" << "equipment" << "important" << "youkai" << "creature" << "attitude";
     foreach (QString s, this->availableData) {
         QFile f(QString(":/data/data/%1.xml").arg(s));
         QFile g(QString(":/data/data/%1_%2.xml").arg(s).arg(QLocale().name()));

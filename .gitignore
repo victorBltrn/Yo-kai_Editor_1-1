@@ -29,3 +29,6 @@ Temporary Items
 *.pro.user
 *.qm
 
+# Test saves
+saves testing/
+

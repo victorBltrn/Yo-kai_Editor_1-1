@@ -44,6 +44,9 @@
         <file>data/youkai_fr_FR.xml</file>
         <file>data/youkai_it_IT.xml</file>
         <file>data/youkai_ja_JP.xml</file>
+        <file>data/attitude.xml</file>
+        <file>data/attitude_en_US.xml</file>
+        <file>data/attitude_en_GB.xml</file>
     </qresource>
     <qresource prefix="/translations">
         <file>translations/qt_de_DE.qm</file>

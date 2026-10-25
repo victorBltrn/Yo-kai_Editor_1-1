@@ -1,0 +1,46 @@
+name: Build Yo-kai Editor 1
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Windows Application
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Qt 5.15.2 (MinGW 8.1 64-bit)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '5.15.2'
+          arch: 'win64_mingw81'
+          tools: 'tools_mingw,8.1.0-1-202004170606,qt.tools.win64_mingw810'
+
+      - name: Build Project
+        shell: cmd
+        run: |
+          qmake Yo-kai_Editor_1.pro CONFIG+=release
+          mingw32-make -j%NUMBER_OF_PROCESSORS%
+
+      - name: Prepare Release Package
+        shell: cmd
+        run: |
+          mkdir dist
+          copy "release\Yo-kai Editor 1.exe" dist\
+          copy README.txt dist\
+          copy LICENSE.txt dist\
+          copy AUTHORS.txt dist\
+          copy CHANGELOG.txt dist\
+          windeployqt --release --compiler-runtime "dist\Yo-kai Editor 1.exe"
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Yo-kai_Editor_1_Windows
+          path: dist/
