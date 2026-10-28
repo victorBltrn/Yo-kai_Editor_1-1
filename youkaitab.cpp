@@ -250,10 +250,23 @@ void YoukaiTab::writeItemAt(int row)
                         ); // attitude
         }
         if (ui->loafingCB->currentIndex() >= 0) {
-            this->write<quint8>(
-                        (quint8)ui->loafingCB->currentData().toUInt(),
-                        0x57 + 0x5C * row
-                        ); // loafing attitude
+            quint8 loafing = (quint8)ui->loafingCB->currentData().toUInt();
+            this->write<quint8>(loafing, 0x57 + 0x5C * row); // loafing attitude
+
+            // Coordinate 0x56 discipline tier with 0x57 loafing tier
+            if (loafing == 4 || loafing == 7) { // Stiff (4) or Serious (7)
+                quint8 current56 = this->read<quint8>(0x56 + 0x5C * row);
+                if (current56 < 3) {
+                    this->write<quint8>(3, 0x56 + 0x5C * row);
+                }
+            } else if (loafing == 0) { // Loafer (0)
+                this->write<quint8>(0, 0x56 + 0x5C * row);
+            } else if (loafing == 3) { // Carefree (3)
+                quint8 current56 = this->read<quint8>(0x56 + 0x5C * row);
+                if (current56 > 1) {
+                    this->write<quint8>(0, 0x56 + 0x5C * row);
+                }
+            }
         }
         this->write<quint16>(ui->evSB->value(), 0x5A + 0x5C * row); // rawEV
     }
